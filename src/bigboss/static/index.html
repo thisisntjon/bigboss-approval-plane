@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#111827">
+    <title>BigBoss</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section id="pair-panel" class="pair-panel hidden">
+        <div class="brand-row">
+          <div>
+            <h1>BigBoss</h1>
+            <p class="muted">Pair this phone</p>
+          </div>
+          <div id="server-health-dot" class="status-dot waiting" title="Checking server…"></div>
+        </div>
+        <p id="server-health-text" class="server-health muted">Checking server…</p>
+        <div class="segmented pair-mode-switch" role="tablist" aria-label="Pairing mode">
+          <button id="pair-pin-mode" class="active" type="button">PIN</button>
+          <button id="pair-code-mode" type="button">Code</button>
+        </div>
+        <p class="muted pair-hint">On your PC run <strong>bigboss pair</strong> (or tap <strong>Pair phone</strong> on the desk) and scan the QR code. Re-pair anytime with the LAN PIN from the serve terminal.</p>
+        <form id="pair-form" class="pair-form">
+          <label>
+            Device name
+            <input id="device-name" name="deviceName" value="Phone" autocomplete="off">
+          </label>
+          <label id="pair-pin-field">
+            LAN PIN
+            <input id="pair-pin" name="pairPin" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="6-digit PIN" autocomplete="one-time-code">
+          </label>
+          <label id="pair-code-field" class="hidden">
+            Pair code
+            <input id="pair-code" name="pairCode" placeholder="ABCD-1234" autocomplete="one-time-code">
+          </label>
+          <button type="submit" class="primary-button">Pair</button>
+        </form>
+        <p id="pair-error" class="error-text"></p>
+      </section>
+
+      <section id="queue-panel" class="queue-panel hidden">
+        <header class="topbar">
+          <div>
+            <h1>BigBoss</h1>
+            <p id="device-label" class="muted"></p>
+          </div>
+          <div class="top-actions">
+            <button id="demo-button" class="icon-button" title="Create demo approval" aria-label="Create demo approval">+</button>
+            <button id="logout-button" class="icon-button" title="Forget this device" aria-label="Forget this device">x</button>
+          </div>
+        </header>
+
+        <div class="queue-controls">
+          <div class="segmented view-switch" role="tablist" aria-label="View">
+            <button id="approvals-view-button" class="active" type="button">Approvals</button>
+            <button id="portfolio-view-button" type="button">Portfolio</button>
+            <button id="squire-view-button" type="button">Squire</button>
+            <button id="daemons-view-button" type="button">Daemons</button>
+            <button id="fleet-view-button" type="button">Fleet</button>
+          </div>
+          <div id="live-state" class="live-state">Connecting</div>
+        </div>
+
+        <div id="approvals-view">
+          <div class="queue-controls">
+            <div class="segmented" role="tablist" aria-label="Approval filter">
+              <button id="pending-filter" class="active" data-status="pending" type="button">Pending</button>
+              <button id="all-filter" data-status="all" type="button">All</button>
+            </div>
+          </div>
+          <section id="summary-strip" class="summary-strip"></section>
+          <section id="approval-list" class="approval-list"></section>
+          <p id="empty-state" class="empty-state hidden">No approvals in this view.</p>
+        </div>
+
+        <div id="portfolio-view" class="hidden">
+          <div class="queue-controls">
+            <p id="portfolio-meta" class="muted">Auto-derived from local signals.</p>
+            <div class="top-actions">
+              <button id="intel-refresh-button" class="icon-button" title="Digest project docs via Squire" aria-label="Refresh intel">&#9889;</button>
+              <button id="registry-refresh-button" class="icon-button" title="Refresh registry" aria-label="Refresh registry">&#8635;</button>
+            </div>
+          </div>
+          <section id="project-list" class="approval-list"></section>
+          <p id="portfolio-empty" class="empty-state hidden">No projects yet. Tap refresh.</p>
+        </div>
+
+        <div id="squire-view" class="hidden">
+          <div class="queue-controls">
+            <p id="squire-meta" class="muted">Shared local model on the remote host.</p>
+            <button id="squire-refresh-button" class="icon-button" title="Reload Squire status" aria-label="Reload Squire status">&#8635;</button>
+          </div>
+          <section id="squire-summary" class="summary-strip"></section>
+          <section id="squire-clients" class="approval-list"></section>
+          <p id="squire-empty" class="empty-state hidden">No Squire usage recorded yet.</p>
+        </div>
+
+        <div id="daemons-view" class="hidden">
+          <div class="queue-controls">
+            <p id="daemons-meta" class="muted">Read-only health of BigBoss services + registered daemons.</p>
+            <button id="daemons-refresh-button" class="icon-button" title="Reload daemon health" aria-label="Reload daemon health">&#8635;</button>
+          </div>
+          <section id="daemons-services" class="approval-list"></section>
+          <section id="daemons-registered" class="approval-list"></section>
+          <p id="daemons-note" class="muted"></p>
+        </div>
+
+        <div id="fleet-view" class="hidden">
+          <div class="queue-controls">
+            <p id="fleet-meta" class="muted">What every harness session across the fleet has been up to.</p>
+            <button id="fleet-refresh-button" class="icon-button" title="Reload fleet sessions" aria-label="Reload fleet sessions">&#8635;</button>
+          </div>
+          <section id="fleet-list" class="approval-list"></section>
+          <p id="fleet-empty" class="empty-state hidden">No harness sessions yet. Run: bigboss session-report --harness ...</p>
+        </div>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
+

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "bigboss": {
+      "type": "stdio",
+      "command": "python",
+      "args": [
+        "mcp_dev.py"
+      ],
+      "env": {}
+    }
+  }
+}

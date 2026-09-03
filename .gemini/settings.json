@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "bigboss": {
+      "command": "python",
+      "args": [
+        "mcp_dev.py"
+      ]
+    }
+  }
+}

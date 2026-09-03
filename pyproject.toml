@@ -1,0 +1,10 @@
+[project]
+name = "bigboss-approval-plane"
+version = "0.1.0"
+description = "Local-first approval dashboard for coordinating AI coding harnesses."
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv]
+package = false
+

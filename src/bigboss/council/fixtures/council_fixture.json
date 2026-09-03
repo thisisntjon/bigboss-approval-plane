@@ -1,0 +1,123 @@
+{
+  "mode": "fixture",
+  "label": "Offline simulated fixture for public capstone demo",
+  "question": "What are the tradeoffs between single-agent and multi-agent verification for AI-assisted decision making?",
+  "agents": [
+    {
+      "id": "architect",
+      "name": "Architect Agent",
+      "role": "Systems thinker",
+      "answer": "A single powerful agent is faster and easier to operate, but it concentrates failure modes. A multi-agent council adds coordination cost, yet creates useful friction: independent answers, critique, claim extraction, and evidence checks make overconfident answers easier to catch.",
+      "claims": ["c1", "c2", "c3"]
+    },
+    {
+      "id": "skeptic",
+      "name": "Skeptic Agent",
+      "role": "Failure-mode reviewer",
+      "answer": "Multi-agent systems can look rigorous while simply multiplying the same model bias. They help only when agents have separated roles, independent context, explicit verification tasks, and an audit trail that records disagreement instead of hiding it.",
+      "claims": ["c4", "c5", "c6"]
+    },
+    {
+      "id": "operator",
+      "name": "Operator Agent",
+      "role": "Practical delivery lead",
+      "answer": "For small teams, a single agent is usually the minimum viable path. Use a council only for high-stakes research, policy, security, or decisions where a wrong answer is costly. The best compromise is an offline fixture demo plus optional live mode.",
+      "claims": ["c7", "c8", "c9"]
+    },
+    {
+      "id": "researcher",
+      "name": "Research Agent",
+      "role": "Evidence and evaluation lead",
+      "answer": "The strongest design is not 'more agents' by itself. It is a staged process: independent generation, peer critique, claim decomposition, evidence checking, confidence scoring, and final synthesis with unresolved claims preserved.",
+      "claims": ["c10", "c11", "c12"]
+    }
+  ],
+  "claims": {
+    "c1": "Single-agent systems are faster and simpler to operate.",
+    "c2": "Single-agent systems concentrate failure modes in one model response.",
+    "c3": "Multi-agent councils add coordination cost.",
+    "c4": "Multi-agent systems can multiply shared model bias if roles are not separated.",
+    "c5": "Independent context and explicit verification tasks improve multi-agent value.",
+    "c6": "An audit trail should preserve disagreement.",
+    "c7": "Small teams often benefit from a single-agent minimum viable path.",
+    "c8": "Council-style verification is most useful when wrong answers are costly.",
+    "c9": "Fixture mode can demonstrate the architecture without paid provider calls.",
+    "c10": "A staged process can separate generation, critique, verification, and synthesis.",
+    "c11": "Confidence scoring is useful when backed by evidence checks.",
+    "c12": "Unresolved claims should remain visible in the final answer."
+  },
+  "peerReviews": [
+    {
+      "reviewer": "architect",
+      "target": "skeptic",
+      "score": 88,
+      "strength": "Correctly warns that agent count is not the same as reliability.",
+      "weakness": "Could offer a more concrete operating model.",
+      "wouldRevise": true
+    },
+    {
+      "reviewer": "skeptic",
+      "target": "operator",
+      "score": 82,
+      "strength": "Grounded in practical team constraints.",
+      "weakness": "Risks underplaying high-stakes reliability needs.",
+      "wouldRevise": false
+    },
+    {
+      "reviewer": "operator",
+      "target": "researcher",
+      "score": 94,
+      "strength": "Gives an actionable staged workflow.",
+      "weakness": "Needs cost and latency caveats.",
+      "wouldRevise": true
+    },
+    {
+      "reviewer": "researcher",
+      "target": "architect",
+      "score": 90,
+      "strength": "Balances architecture and failure modes.",
+      "weakness": "Should distinguish simulated fixture evidence from live web evidence.",
+      "wouldRevise": true
+    }
+  ],
+  "evidence": [
+    {
+      "id": "e1",
+      "title": "Fixture architecture note",
+      "summary": "Separate roles reduce correlated review failures only when the process forces independent answers and explicit checks.",
+      "source": "fixtures/council_fixture.json"
+    },
+    {
+      "id": "e2",
+      "title": "Fixture operations note",
+      "summary": "Small teams should prefer the simplest workflow unless the decision is high-impact or auditability is required.",
+      "source": "fixtures/council_fixture.json"
+    },
+    {
+      "id": "e3",
+      "title": "Fixture safety note",
+      "summary": "Offline fixture mode avoids provider keys and paid calls; live mode must be opt-in and user configured.",
+      "source": "fixtures/council_fixture.json"
+    },
+    {
+      "id": "e4",
+      "title": "Fixture audit note",
+      "summary": "A trustworthy final answer should show supported, refuted, and unresolved claims rather than hiding uncertainty.",
+      "source": "fixtures/council_fixture.json"
+    }
+  ],
+  "verification": {
+    "c1": {"verdict": "supported", "confidence": 0.9, "evidence": ["e2"], "reasoning": "A simpler single-agent workflow has fewer moving parts and less coordination overhead."},
+    "c2": {"verdict": "supported", "confidence": 0.84, "evidence": ["e1"], "reasoning": "One model response can carry unchecked errors unless another process reviews it."},
+    "c3": {"verdict": "supported", "confidence": 0.88, "evidence": ["e2"], "reasoning": "Councils require orchestration, review, and synthesis stages."},
+    "c4": {"verdict": "supported", "confidence": 0.81, "evidence": ["e1"], "reasoning": "Agents with the same context or model family can share blind spots."},
+    "c5": {"verdict": "supported", "confidence": 0.86, "evidence": ["e1"], "reasoning": "Explicit role separation makes the review process more useful."},
+    "c6": {"verdict": "supported", "confidence": 0.93, "evidence": ["e4"], "reasoning": "Auditability depends on preserving disagreement and uncertainty."},
+    "c7": {"verdict": "supported", "confidence": 0.78, "evidence": ["e2"], "reasoning": "The minimum viable path is often the simplest path for small teams."},
+    "c8": {"verdict": "supported", "confidence": 0.9, "evidence": ["e2", "e4"], "reasoning": "The extra review cost is justified when the cost of error is high."},
+    "c9": {"verdict": "supported", "confidence": 0.98, "evidence": ["e3"], "reasoning": "This capstone fixture mode uses static local data and no provider calls."},
+    "c10": {"verdict": "supported", "confidence": 0.95, "evidence": ["e1", "e4"], "reasoning": "The staged process is represented directly in the fixture pipeline."},
+    "c11": {"verdict": "partially_supported", "confidence": 0.72, "evidence": ["e4"], "reasoning": "Confidence is useful only when tied to evidence and caveats; otherwise it can be decorative."},
+    "c12": {"verdict": "supported", "confidence": 0.92, "evidence": ["e4"], "reasoning": "The final synthesis should retain unresolved claims for review."}
+  }
+}

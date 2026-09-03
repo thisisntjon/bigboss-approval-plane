@@ -1,0 +1,4 @@
+[mcp_servers.bigboss]
+command = 'python'
+args = ['mcp_dev.py']
+

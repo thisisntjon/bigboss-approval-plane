@@ -1,0 +1,231 @@
+{
+  "mode": "fixture",
+  "scenarioId": "car_wash_50m",
+  "label": "Offline simulated fixture for weighted practical-reasoning demo",
+  "question": "I want to wash my car. The car wash is 50 meters away. Should I walk or drive?",
+  "scenarioInterpretation": {
+    "likelyIntent": "The user wants to get the car washed at a nearby stationary car wash.",
+    "primaryRecommendation": "drive",
+    "ambiguity": "Walking is reasonable only if the user wants to inspect, pay, ask a question, or if the car is already at the wash."
+  },
+  "agents": [
+    {
+      "id": "intent_framer",
+      "name": "Intent Framer",
+      "role": "Interprets what task the user is actually trying to complete",
+      "roleWeight": 0.25,
+      "answer": "The likely goal is not just personal travel over 50 meters; it is getting the car washed. If the user wants the actual car washed at that facility, the car needs to be involved in the trip.",
+      "claims": ["cw1", "cw5"]
+    },
+    {
+      "id": "physical_logistics",
+      "name": "Physical Logistics Analyst",
+      "role": "Checks whether the proposed action physically accomplishes the goal",
+      "roleWeight": 0.35,
+      "answer": "For a stationary car wash, the car must be at the wash location. Walking the person there does not bring the car, so driving the car is the practical choice for the actual wash.",
+      "claims": ["cw2", "cw4"]
+    },
+    {
+      "id": "practical_operator",
+      "name": "Practical Operator",
+      "role": "Weighs convenience, distance, and normal execution",
+      "roleWeight": 0.25,
+      "answer": "Fifty meters is very walkable for a person, so walking is sensible for checking the line or paying. But if the plan is to wash the car now, driving 50 meters directly completes the task.",
+      "claims": ["cw3", "cw5"]
+    },
+    {
+      "id": "ambiguity_skeptic",
+      "name": "Ambiguity Skeptic",
+      "role": "Preserves caveats and hidden assumptions",
+      "roleWeight": 0.15,
+      "answer": "The recommendation depends on missing context: whether the car is already at the wash, whether the car can be driven safely and legally, and whether the user only wants to inspect the location.",
+      "claims": ["cw5", "cw6"]
+    }
+  ],
+  "swarmRoles": [
+    {
+      "id": "claim_atomizer",
+      "name": "Claim Atomizer",
+      "checks": "Splits each role answer into atomic claims."
+    },
+    {
+      "id": "scenario_fact_verifier",
+      "name": "Scenario-Fact Verifier",
+      "checks": "Confirms facts stated by the prompt: car wash distance and user's stated goal."
+    },
+    {
+      "id": "goal_applicability_verifier",
+      "name": "Goal-Applicability Verifier",
+      "checks": "Distinguishes claims that help complete the wash from claims that only help personal travel."
+    },
+    {
+      "id": "physical_constraint_verifier",
+      "name": "Physical-Constraint Verifier",
+      "checks": "Checks whether walking moves the car to the wash."
+    },
+    {
+      "id": "weighted_decision_aggregator",
+      "name": "Weighted Decision Aggregator",
+      "checks": "Combines verdict, confidence, role weight, claim weight, and option effect."
+    }
+  ],
+  "claims": {
+    "cw1": "The user likely wants to get the car washed, not merely travel personally to the car wash location.",
+    "cw2": "To wash the car at a stationary car wash, the car must be brought to the wash.",
+    "cw3": "Fifty meters is a short and reasonable distance for most people to walk.",
+    "cw4": "Walking to the car wash does not move the car there if the car starts with the user.",
+    "cw5": "Walking is reasonable if the user only wants to inspect, pay, ask a question, or if the car is already at the wash.",
+    "cw6": "The recommendation assumes the car is safe and legal to drive."
+  },
+  "peerReviews": [
+    {
+      "reviewer": "intent_framer",
+      "target": "physical_logistics",
+      "score": 94,
+      "strength": "Correctly identifies the physical requirement that the car must reach the wash.",
+      "weakness": "Should state the hidden assumption that the wash is stationary.",
+      "wouldRevise": true
+    },
+    {
+      "reviewer": "physical_logistics",
+      "target": "practical_operator",
+      "score": 86,
+      "strength": "Keeps the short walking distance in view.",
+      "weakness": "Could overvalue personal convenience if the task is the actual wash.",
+      "wouldRevise": true
+    },
+    {
+      "reviewer": "practical_operator",
+      "target": "ambiguity_skeptic",
+      "score": 90,
+      "strength": "Preserves the cases where walking is the right answer.",
+      "weakness": "Needs a clear default recommendation after listing caveats.",
+      "wouldRevise": true
+    },
+    {
+      "reviewer": "ambiguity_skeptic",
+      "target": "intent_framer",
+      "score": 88,
+      "strength": "Frames the likely intent as task completion.",
+      "weakness": "Should avoid treating the likely intent as certain.",
+      "wouldRevise": true
+    }
+  ],
+  "evidence": [
+    {
+      "id": "cw_e1",
+      "title": "Prompt fact: car wash distance",
+      "summary": "The user says the car wash is 50 meters away.",
+      "source": "fixtures/car_wash_fixture.json"
+    },
+    {
+      "id": "cw_e2",
+      "title": "Prompt fact: intended task",
+      "summary": "The user says they want to wash their car.",
+      "source": "fixtures/car_wash_fixture.json"
+    },
+    {
+      "id": "cw_e3",
+      "title": "Physical constraint note",
+      "summary": "A stationary car wash can wash a car only if the car is present at the wash location.",
+      "source": "fixtures/car_wash_fixture.json"
+    },
+    {
+      "id": "cw_e4",
+      "title": "Ambiguity note",
+      "summary": "Walking can be correct for checking, paying, asking a question, or if the car is already at the wash.",
+      "source": "fixtures/car_wash_fixture.json"
+    },
+    {
+      "id": "cw_e5",
+      "title": "Safety caveat note",
+      "summary": "Driving should not be recommended if the car cannot be driven safely or legally.",
+      "source": "fixtures/car_wash_fixture.json"
+    }
+  ],
+  "verification": {
+    "cw1": {
+      "verdict": "supported",
+      "confidence": 0.91,
+      "evidence": ["cw_e2"],
+      "reasoning": "The user states the task as washing the car, so task completion is the likely intent.",
+      "roleId": "intent_framer",
+      "claimType": "intent",
+      "roleWeight": 0.25,
+      "claimWeight": 0.9,
+      "supports": { "drive": 0.8, "walk": 0.1 },
+      "appliesWhen": ["actual_wash"]
+    },
+    "cw2": {
+      "verdict": "supported",
+      "confidence": 0.95,
+      "evidence": ["cw_e3"],
+      "reasoning": "A stationary car wash cannot wash a car that has not been brought to it.",
+      "roleId": "physical_logistics",
+      "claimType": "physical_requirement",
+      "category": "logical_deduction",
+      "roleWeight": 0.35,
+      "claimWeight": 1.0,
+      "supports": { "drive": 1.0 },
+      "appliesWhen": ["actual_wash"]
+    },
+    "cw3": {
+      "verdict": "supported",
+      "confidence": 0.95,
+      "evidence": ["cw_e1"],
+      "reasoning": "Fifty meters is close enough that walking is reasonable for a person.",
+      "roleId": "practical_operator",
+      "claimType": "distance",
+      "roleWeight": 0.25,
+      "claimWeight": 0.45,
+      "supports": { "walk": 0.8, "caveat": 0.4 },
+      "appliesWhen": ["personal_travel", "checking"]
+    },
+    "cw4": {
+      "verdict": "supported",
+      "confidence": 0.95,
+      "evidence": ["cw_e3"],
+      "reasoning": "If the car starts with the user, walking the person to the wash leaves the car behind.",
+      "roleId": "physical_logistics",
+      "claimType": "physical_constraint",
+      "category": "logical_deduction",
+      "roleWeight": 0.35,
+      "claimWeight": 0.95,
+      "supports": { "drive": 0.9 },
+      "appliesWhen": ["actual_wash"]
+    },
+    "cw5": {
+      "verdict": "partially_supported",
+      "confidence": 0.75,
+      "evidence": ["cw_e4"],
+      "reasoning": "Walking is a good conditional branch, but only when the task is inspection/payment or the car is already there.",
+      "roleId": "ambiguity_skeptic",
+      "claimType": "conditional_caveat",
+      "roleWeight": 0.15,
+      "claimWeight": 0.6,
+      "supports": { "walk": 0.7, "caveat": 1.0 },
+      "appliesWhen": ["checking", "car_already_there"]
+    },
+    "cw6": {
+      "verdict": "unresolved",
+      "confidence": 0.5,
+      "evidence": ["cw_e5"],
+      "reasoning": "The prompt does not say whether the car is safe and legal to drive, so this remains an assumption.",
+      "roleId": "ambiguity_skeptic",
+      "claimType": "safety_assumption",
+      "roleWeight": 0.15,
+      "claimWeight": 0.8,
+      "supports": { "caveat": 1.0 },
+      "appliesWhen": ["actual_wash"]
+    }
+  },
+  "synthesis": {
+    "finalAnswer": "Drive the car to the car wash if your goal is to wash it there. The car wash is only 50 meters away, so walking is reasonable if you only want to check the line, pay, ask a question, or if the car is already at the wash. But for the actual wash, the car needs to be at the facility, so driving the car is the practical recommendation.",
+    "assumptionsAndCaveats": [
+      "Assumes the car starts with the user and is not already at the wash.",
+      "Assumes the car wash is a stationary facility, not a mobile/detailing service.",
+      "Assumes the car can be driven safely and legally.",
+      "If the user only wants to inspect, pay, or ask a question, walking 50 meters is reasonable."
+    ]
+  }
+}

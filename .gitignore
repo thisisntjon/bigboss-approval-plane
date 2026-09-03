@@ -1,0 +1,29 @@
+.bigboss/
+.uv-cache/
+.venv/
+__pycache__/
+*.pyc
+artifacts/
+# Secrets: real provider API keys live here — never commit.
+.env
+.env.*
+!.env.example
+
+
+
+# Loose local artifacts / scratch — not for the public repo
+files.zip
+files/
+additonalprojectcontext.txt
+compass_artifact*.md
+research.txt
+*.tmp
+
+# Embedded foreign project (has its own .env + node_modules); not part of this repo
+the-council-capstone/
+node_modules/
+.bigboss/secrets/
+**/.env
+**/.env.*
+!.env.example
+.pytest_cache/
