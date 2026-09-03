@@ -121,7 +121,7 @@ uv run python -m bigboss mcp-stdio
   exclusion (never crawled/digested off-box; at-rest intel redacted). `excluded` is a
   PRIORITIZATION exclusion (dropped from the Council's `build_portfolio_context`; intel KEPT).
   A work project is typically `excluded`; a private one (e.g. personal memory or health data) is `no_crawl`.
-- **Ground-truth baseline + backlog model:** a frontier-agent pass sets each project's durable
+- **Ground-truth baseline + backlog model:** an agent pass sets each project's durable
   `lifecycle` (active/done/archived/dormant/experiment), `ownership` (personal/work/third-party),
   `notes` (the operator's authoritative context), lineage (`supersedes`/`evolved_into`), and `track_it`
   (sensitive — legal/work-machine). These survive `registry-refresh`. **Dormant personal

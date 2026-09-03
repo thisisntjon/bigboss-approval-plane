@@ -1,10 +1,48 @@
 # BigBoss Approval Plane
 
-Local-first control plane for coordinating multiple AI coding harnesses: an **approval/governance dashboard** plus a **portfolio brain** — a multi-model Council that classifies, prioritizes, ideates over, and deep-researches your projects. The primary surface is the **local desktop dashboard** (loopback); a LAN/phone mode is opt-in via `--lan`.
+A local human-authority and observability plane for AI coding agents.
 
-This MVP is dependency-light on purpose: it uses Python's standard library, SQLite, Server-Sent Events, and a static web UI. It runs locally today. Harness integration that exists in this repo: a stdio **MCP facade** (`src/bigboss/mcp_stdio.py`, usable by any MCP-capable harness — project configs for Claude Code, Codex, Gemini CLI, and Grok are checked in), a generic stdin-JSON **hook adapter** (`src/bigboss/hook_adapter.py`, wired up for Codex project hooks; the MCP facade's `bigboss_permission_prompt` tool serves Claude Code's `--permission-prompt-tool`), and an enforced **Codex app-server bridge** (`src/bigboss/codex_app_bridge.py`). There are no Cursor, Antigravity, OpenHands, or ACP adapters yet.
+**Status:** WORKING MVP. Python stdlib only, SQLite, Server-Sent Events, a static web UI. Runs on one machine; LAN/phone mode is opt-in (`--lan`).
 
-**Status:** working local MVP. The core governance guarantee (an LLM can *propose* but never *commit* without your approval) is enforced in code and covered by the test suite in `tests/`. The CLI is UTF-8-safe on a default Windows console (no `PYTHONIOENCODING` needed).
+**Research question:** How should humans retain authority over autonomous coding agents without becoming the bottleneck? This repo is an instrument for studying that question. It does not claim an answer.
+
+## How it is layered
+
+1. A harness (Claude Code, Codex, Gemini CLI, Grok) proposes an action.
+2. BigBoss evaluates and routes it: `auto_allowed`, `pending`, or `blocked` (`src/bigboss/policy.py`).
+3. Human approval is authoritative for gated actions. No MCP tool or API lets an agent approve its own request.
+4. Each decision is bound to the exact `action_hash` of the proposed action, workspace, and policy version. Adapters may execute only the matching action.
+5. State and audit are persisted in SQLite (requests, decisions, runs, events) and survive restart.
+6. Integrations sit on top: MCP facade, hook adapter, Codex app-server bridge, phone pairing, portfolio registry, cost metering, Council routing.
+
+## Quickstart
+
+```powershell
+$env:PYTHONPATH='src'
+uv run python -m bigboss serve --port 8787 --no-open   # dashboard at http://127.0.0.1:8787/
+uv run python -m bigboss demo-request                  # raises a card to approve
+```
+
+Hooks and adapters find the server via `BIGBOSS_URL` (default `http://127.0.0.1:8787`). Every command below assumes `PYTHONPATH='src'` from the repo root. Details: [Run](#run-local-dashboard).
+
+## Verify
+
+```powershell
+uv run --with pytest python -m pytest -q
+```
+
+Observed 2026-09-02 on Windows 11: 398 passed, 1 known Windows-only failure (`tests/test_registry_api.py::RegistryHTTPTests::test_daemons_route_returns_service_health`, a socket timeout). Author-run; see [CONTRIBUTING.md](CONTRIBUTING.md) to file an independent reproduction.
+
+## Limitations
+
+- No Cursor, Antigravity, OpenHands, or ACP adapters.
+- iOS has no reliable closed-app LAN-only lock-screen web push. Phone alerts need the page or PWA open.
+- LAN only. No tunnel, no relay, no hosted service.
+- Single user. One human authority per instance. Author-run only; no independent reproduction yet.
+
+**Deeper documentation:** [Harness adapter contract](#harness-adapter-contract) · [Definition of done](#definition-of-done) · [Useful files](#useful-files) · [docs/squire.md](docs/squire.md) · [CONTRIBUTING.md](CONTRIBUTING.md)
+
+Secondary modules: [MCP facade](#mcp-tools) · [Claude permission flows](#mcp-tools) · [Codex app-server bridge](#codex-app-server-bridge-enforced-codex-approvals) · [phone approval](#pair-your-phone-one-click) · [portfolio registry](#portfolio-view-ecosystem-phase-e3) · [cost metering](#cost-router-ecosystem-phase-e1-metering-only) · [model-routing intelligence](#the-council-portfolio-brain)
 
 ## What It Does
 
@@ -18,19 +56,9 @@ This MVP is dependency-light on purpose: it uses Python's standard library, SQLi
 - Persists requests, decisions, runs, pair codes, and audit events in SQLite.
 - Auto-derives a **project portfolio registry** and runs a multi-model **Council** over it — prioritization, cross-project ideation, and Fable-led per-project deep research (see [The Council](#the-council-portfolio-brain)).
 
-Strict-local iPhone note: iOS does not provide reliable closed-app LAN-only lock-screen web push. For v1, immediate alerts require the web page/PWA to stay open. Approval content and decisions remain local.
-
 ## Run (local dashboard)
 
-PowerShell:
-
-```powershell
-$env:PYTHONPATH='src'
-$env:UV_CACHE_DIR="$PWD\.uv-cache"
-uv run python -m bigboss serve --port 8787
-```
-
-Add `--no-open` to skip launching the browser (useful headless or in CI). The stdin hook adapter (`src/bigboss/hook_adapter.py`) finds the server via `BIGBOSS_URL` (default `http://127.0.0.1:8787`), or `--url`.
+The serve command is in [Quickstart](#quickstart). The stdin hook adapter (`src/bigboss/hook_adapter.py`) also accepts `--url` in place of `BIGBOSS_URL`.
 
 **Run from anywhere:** run `scripts\Add-BigBossToPath.ps1` once, then `bigboss <command>` (e.g. `bigboss ps`, `bigboss serve --port 8787`) works in any directory via the self-locating `scripts/bigboss.cmd` launcher — no `PYTHONPATH` needed, and state stays repo-pinned in `<repo>\.bigboss`.
 
@@ -42,17 +70,9 @@ uv run python -m bigboss open
 
 Auto-claim (not blanket loopback trust) is deliberate: governed harnesses run on this same machine, so decisions stay bound to a token and attributable to a device — a rogue local process cannot self-approve.
 
-## Pair your phone (opt-in LAN mode)
-
-Phone access is opt-in. Start the server with `--lan` (binds `0.0.0.0`, opens the Pairing Desk instead of the dashboard):
-
-```powershell
-uv run python -m bigboss serve --lan
-```
-
-Then use the one-click pairing flow below.
-
 ## Pair your phone (one click)
+
+Phone access is opt-in: `serve --lan` binds `0.0.0.0` and opens the Pairing Desk instead of the dashboard.
 
 **Pin `scripts\pair-phone.bat` to your taskbar** (or run `uv run python -m bigboss pair`).
 
@@ -64,15 +84,7 @@ That command:
 First-time bootstrap is scan-only. After that, re-pair with the **LAN PIN** printed when the server starts (phone → PIN tab).
 
 ```powershell
-cd <repo>
-$env:PYTHONPATH='src'
-uv run python -m bigboss pair
-```
-
-Or run the server directly in LAN mode (also opens the desk):
-
-```powershell
-uv run python -m bigboss serve --lan
+uv run python -m bigboss pair            # or: serve --lan (also opens the desk)
 ```
 
 Manage devices:
@@ -83,19 +95,9 @@ uv run python -m bigboss lan-pin
 uv run python -m bigboss lan-pin --rotate
 ```
 
-Create a demo request:
-
-```powershell
-$env:PYTHONPATH='src'
-$env:UV_CACHE_DIR="$PWD\.uv-cache"
-uv run python -m bigboss demo-request
-```
-
 Run the stdio MCP server:
 
 ```powershell
-$env:PYTHONPATH='src'
-$env:UV_CACHE_DIR="$PWD\.uv-cache"
 uv run python -m bigboss mcp-stdio
 ```
 
@@ -188,8 +190,6 @@ claude -p "<task>" --allowedTools "mcp__bigboss__bigboss_request_approval" `
 Harness hooks can call BigBoss directly over localhost:
 
 ```powershell
-$env:PYTHONPATH='src'
-$env:UV_CACHE_DIR="$PWD\.uv-cache"
 Get-Content hook-payload.json | uv run python -m bigboss hook-approval --harness codex --no-wait
 ```
 
@@ -226,8 +226,6 @@ experimental), which sends the client JSON-RPC approval requests. `src/bigboss/c
 drives it and routes each request through BigBoss to the phone:
 
 ```powershell
-$env:PYTHONPATH='src'
-$env:UV_CACHE_DIR="$PWD\.uv-cache"
 uv run python -m bigboss codex-run "Create a file X, then stop." --sandbox workspace-write --timeout 600
 ```
 
@@ -249,8 +247,6 @@ rewriting, no local triage, and the cap is **advisory (alerts, never blocks)** u
 verified.
 
 ```powershell
-$env:PYTHONPATH='src'
-$env:UV_CACHE_DIR="$PWD\.uv-cache"
 uv run python -m bigboss router --port 4000 --harness agent-sdk
 ```
 
@@ -286,8 +282,6 @@ D:-drive paths decoded from slugs), handoffs, and `daemons.json`. Copies dedupe 
 per family (others become aliases); a marker-less parent that merely contains projects is flagged as ambiguous and hidden.
 
 ```powershell
-$env:PYTHONPATH='src'
-$env:UV_CACHE_DIR="$PWD\.uv-cache"
 uv run python -m bigboss registry-refresh          # harvest + reconcile (default roots: ~/Desktop, ~/Desktop/Python; extend via BIGBOSS_EXTRA_ROOTS)
 uv run python -m bigboss registry-refresh --prune  # + tombstone vanished LOCAL projects (never remote/pinned)
 uv run python -m bigboss registry-list             # print the portfolio (--all includes ambiguous/gone)
@@ -359,8 +353,6 @@ character budget and returns a bundle with file inventory, optional text, and a 
 `bigboss` stdio facade and as a JSON CLI:
 
 ```powershell
-$env:PYTHONPATH='src'
-$env:UV_CACHE_DIR="$PWD\.uv-cache"
 uv run python -m bigboss crawl                       # all registered projects (hashes + inventory)
 uv run python -m bigboss crawl --project BigBoss --full-text   # one project, with doc text
 uv run python -m bigboss crawl --path <path-to-squire> --full-text    # any directory, registry not required
@@ -488,3 +480,11 @@ The launcher for all of these is `mcp_dev.py`, which runs `python -m bigboss mcp
 - `src/bigboss/static/`: phone-first web UI (approvals + portfolio).
 - `docs/squire.md`: Squire local-inference endpoint (LM Studio on a LAN box) + `squire` MCP.
 - `.bigboss/secrets/`: generated local admin and adapter tokens.
+
+## Part of the Simone Systems Research program
+
+SEED measures whether agent-driven work constitutes verified progress. BigBoss controls which autonomous actions can occur and preserves human decision authority. The Council tests independent verification through heterogeneous model families. The Bus shows adversarial review terminating a bad architecture before further implementation. Godot Methodology tests whether the same verification principles generalize into software architecture.
+
+[seed-protocol](https://github.com/thisisntjon/seed-protocol) · [thecouncil](https://github.com/thisisntjon/thecouncil) · [thebus](https://github.com/thisisntjon/thebus) · [godot-ai-methodology](https://github.com/thisisntjon/godot-ai-methodology) · [simoneresearch.com](https://simoneresearch.com)
+
+Simone Systems Research is founder-led and independent (Jonathan Simone, jon@simoneresearch.com). Principles: Evidence before promotion; Independent verification; Compute must earn its cost; Negative results are retained; Artifacts matter.
