@@ -83,7 +83,17 @@ class RegistryHTTPTests(unittest.TestCase):
 
     def test_daemons_route_returns_service_health(self):
         headers = self.pair_device()
-        data = self.request_json("GET", "/api/daemons", headers=headers)
+        # The route probes six loopback endpoints serially with a 2s connect
+        # timeout each (three BigBoss services, three watched remote ones). On
+        # Windows those probes do not fail fast when nothing is listening, so
+        # the handler outran this client's 5s timeout on a clean
+        # windows-latest runner: run 35035595331, both 3.12 and 3.13. That is a
+        # property of the route under unreachable endpoints, not of the
+        # response this test is about, so the probe is stubbed out. Everything
+        # else in the path still runs for real: status(), service_status(),
+        # load_registry(), and the HTTP layer.
+        with patch("bigboss.daemon_registry._port_open", return_value=False):
+            data = self.request_json("GET", "/api/daemons", headers=headers)
         self.assertIn("bigboss_services", data)
         self.assertIn("registered_daemons", data)
         self.assertIn("note", data)

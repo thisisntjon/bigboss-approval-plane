@@ -49,6 +49,7 @@ Earlier author-run observation, kept as history: 2026-09-02 on Windows 11, 398 p
 - iOS has no reliable closed-app LAN-only lock-screen web push. Phone alerts need the page or PWA open.
 - LAN only. No tunnel, no relay, no hosted service.
 - Single user. One human authority per instance. Author-run only; no independent reproduction yet.
+- On Windows, `GET /api/daemons` can take longer than five seconds when none of the probed local services are listening. It probes six endpoints serially with a two second connect timeout each.
 
 **Deeper documentation:** [Harness adapter contract](#harness-adapter-contract) · [Definition of done](#definition-of-done) · [Useful files](#useful-files) · [docs/squire.md](docs/squire.md) · [CONTRIBUTING.md](CONTRIBUTING.md)
 

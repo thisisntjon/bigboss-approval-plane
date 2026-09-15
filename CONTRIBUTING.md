@@ -15,11 +15,11 @@ BigBoss is a research instrument (status: WORKING MVP) from Simone Systems Resea
 From the repo root, on any platform:
 
 ```powershell
-$env:PYTHONPATH='src'
+$env:PYTHONPATH='src'          # bash or zsh: export PYTHONPATH=src
 uv run --with pytest python -m pytest -q
 ```
 
-`python -m unittest discover -s tests` also works. One test in `tests/test_registry_api.py` is known to fail on Windows only. Run the suite before opening a pull request and paste the tail of the output in the PR description.
+`python -m unittest discover -s tests` also works. CI runs the same suite on ubuntu-latest and windows-latest against Python 3.12 and 3.13. Run it before opening a pull request and paste the tail of the output in the PR description.
 
 ## Report a reproduction
 

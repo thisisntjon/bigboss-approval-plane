@@ -29,6 +29,7 @@ The first tagged version. It marks the point where a stranger can run the test s
 ### Fixed
 
 - `tests/test_harvest.py` asserted a Windows path fact through `Path`, so it failed anywhere that is not Windows. It asserts the same fact through `PureWindowsPath` now. No product code changed.
+- `tests/test_registry_api.py::RegistryHTTPTests::test_daemons_route_returns_service_health` failed on Windows, the failure the README had recorded as author-run since 2026-09-02. A clean windows-latest runner reproduced it on both Python versions, so it is the platform and not one machine. The route probes six loopback endpoints serially with a two second connect timeout each, and on Windows those probes do not fail fast when nothing is listening, so the handler outran the test client's five second timeout. The probe is stubbed in that test now; the rest of the route still runs for real. The route's behavior is unchanged and is recorded under Limitations in the README.
 - `tests/test_process_primitives.py` parented the process it then asked `terminate_pid` to kill. On POSIX that leaves a zombie, a zombie still answers `os.kill(pid, 0)`, and so the test read a successful kill as a failure. It spawns a detached process now, which is what the product operates on: both callers of `terminate_pid` act on pids found by scanning for orphans, never on their own children. No product code changed.
 
 ### Evidence boundary
