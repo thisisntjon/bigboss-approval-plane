@@ -37,7 +37,7 @@ Hooks and adapters find the server via `BIGBOSS_URL` (default `http://127.0.0.1:
 uv run --with pytest python -m pytest -q
 ```
 
-CI runs the full suite on every push, on ubuntu-latest and windows-latest, against Python 3.12 and 3.13, with no vendor API keys configured. Green run for v0.1.0: CI_RUN_URL_PLACEHOLDER (CI_RUN_COUNTS_PLACEHOLDER).
+CI runs the full suite on every push, on ubuntu-latest and windows-latest, against Python 3.12 and 3.13, with no vendor API keys configured. Green run for v0.1.0: https://github.com/thisisntjon/bigboss-approval-plane/actions/runs/35037101934 (ubuntu-latest 3.12 and 3.13: 399 passed, 0 skipped, 0 xfailed; windows-latest 3.12 and 3.13: 399 passed, 0 skipped, 0 xfailed).
 
 That badge is the author's own automation running on rented hardware. It is not independent reproduction and this repo does not claim any. See [CONTRIBUTING.md](CONTRIBUTING.md) to file one.
 
