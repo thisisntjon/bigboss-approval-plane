@@ -38,14 +38,14 @@ class PidIsAliveTests(unittest.TestCase):
 
 class TerminatePidTests(unittest.TestCase):
     def test_terminate_actually_kills(self):
-        child = _spawn_sleeper()
+        pid = _spawn_detached_sleeper()
         try:
             time.sleep(0.3)
-            self.assertTrue(pid_is_alive(child.pid))
-            self.assertTrue(terminate_pid(child.pid), "terminate_pid reported failure")
-            self.assertFalse(pid_is_alive(child.pid), "process survived terminate_pid")
+            self.assertTrue(pid_is_alive(pid))
+            self.assertTrue(terminate_pid(pid), "terminate_pid reported failure")
+            self.assertFalse(pid_is_alive(pid), "process survived terminate_pid")
         finally:
-            _hard_kill(child)
+            _hard_kill_pid(pid)
 
     def test_terminate_dead_pid_is_true(self):
         child = _spawn_sleeper()
@@ -61,6 +61,38 @@ def _spawn_sleeper() -> subprocess.Popen:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+
+
+def _spawn_detached_sleeper() -> int:
+    """Start a sleeper this test process does not parent, and return its pid.
+
+    Production never parents what it terminates: procman.reap and
+    store._apply_reap both act on pids found by scanning for orphans. The
+    distinction matters on POSIX. A direct Popen child that receives SIGTERM
+    becomes a zombie until its parent reaps it, and a zombie still answers
+    os.kill(pid, 0), so terminate_pid would report failure for a process it
+    really did kill. Spawning through a launcher that exits immediately leaves
+    the sleeper parented by init, which reaps it, matching what the product
+    actually operates on. On Windows there are no zombies and parentage does
+    not matter, so the same helper works there.
+    """
+    launcher = (
+        "import subprocess, sys;"
+        "p = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'],"
+        " stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL);"
+        "sys.stdout.write(str(p.pid))"
+    )
+    done = subprocess.run(
+        [sys.executable, "-c", launcher], capture_output=True, text=True, timeout=30
+    )
+    return int(done.stdout.strip())
+
+
+def _hard_kill_pid(pid: int) -> None:
+    try:
+        terminate_pid(pid)
+    except Exception:
+        pass
 
 
 def _hard_kill(child: subprocess.Popen) -> None:

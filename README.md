@@ -17,8 +17,12 @@ A local human-authority and observability plane for AI coding agents.
 
 ## Quickstart
 
+BigBoss is a clone-and-run tool. There is no package to install and no console script. You need Python 3.12 or newer and [uv](https://docs.astral.sh/uv/). Nothing else: the project declares zero runtime dependencies and uses the standard library only.
+
 ```powershell
-$env:PYTHONPATH='src'
+git clone https://github.com/thisisntjon/bigboss-approval-plane.git
+cd bigboss-approval-plane
+$env:PYTHONPATH='src'                                  # bash or zsh: export PYTHONPATH=src
 uv run python -m bigboss serve --port 8787 --no-open   # dashboard at http://127.0.0.1:8787/
 uv run python -m bigboss demo-request                  # raises a card to approve
 ```
@@ -27,11 +31,17 @@ Hooks and adapters find the server via `BIGBOSS_URL` (default `http://127.0.0.1:
 
 ## Verify
 
+[![tests](https://github.com/thisisntjon/bigboss-approval-plane/actions/workflows/ci.yml/badge.svg)](https://github.com/thisisntjon/bigboss-approval-plane/actions/workflows/ci.yml)
+
 ```powershell
 uv run --with pytest python -m pytest -q
 ```
 
-Observed 2026-09-02 on Windows 11: 398 passed, 1 known Windows-only failure (`tests/test_registry_api.py::RegistryHTTPTests::test_daemons_route_returns_service_health`, a socket timeout). Author-run; see [CONTRIBUTING.md](CONTRIBUTING.md) to file an independent reproduction.
+CI runs the full suite on every push, on ubuntu-latest and windows-latest, against Python 3.12 and 3.13, with no vendor API keys configured. Green run for v0.1.0: CI_RUN_URL_PLACEHOLDER (CI_RUN_COUNTS_PLACEHOLDER).
+
+That badge is the author's own automation running on rented hardware. It is not independent reproduction and this repo does not claim any. See [CONTRIBUTING.md](CONTRIBUTING.md) to file one.
+
+Earlier author-run observation, kept as history: 2026-09-02 on Windows 11, 398 passed and 1 Windows-only failure (`tests/test_registry_api.py::RegistryHTTPTests::test_daemons_route_returns_service_health`, a socket timeout).
 
 ## Limitations
 
