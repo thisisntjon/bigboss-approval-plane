@@ -2,7 +2,7 @@ import json
 import os
 import tempfile
 import unittest
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from unittest import mock
 
 import bigboss.registry.harvest as H
@@ -82,11 +82,15 @@ class HarvestTests(unittest.TestCase):
         # empty (a drive root like "D:/") is never itself a project. We can't make
         # an empty-name dir under tmp, so assert the two halves the guard rests on:
         # (a) named marked roots ARE included, (b) drive roots have an empty name.
+        # Half (b) is a Windows path fact, so it is asserted against
+        # PureWindowsPath. A plain Path("D:/") on POSIX is an ordinary relative
+        # directory named "D:", which would fail the assertion for a reason that
+        # has nothing to do with the guard.
         marked = self.home / "Desktop" / "MarkedRoot"
         marked.mkdir()
         (marked / "CLAUDE.md").write_text("# MarkedRoot\n\nA project.\n", encoding="utf-8")
         self.assertIn(marked, H._scan_root(marked))  # named root with marker -> kept
-        self.assertEqual(Path("D:/").name, "")  # drive root -> guard excludes it
+        self.assertEqual(PureWindowsPath("D:/").name, "")  # drive root -> guard excludes it
 
 
 if __name__ == "__main__":

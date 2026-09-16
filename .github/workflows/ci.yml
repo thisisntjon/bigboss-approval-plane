@@ -1,0 +1,52 @@
+name: tests
+
+# Runs the full suite on the two operating systems and the two Python versions
+# the project supports. Nothing is installed that the project does not already
+# need: the project declares zero runtime dependencies, and pytest is the only
+# test-time addition. No vendor API keys are configured, so any code path that
+# needs one must skip or mock, never pass by accident.
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    name: ${{ matrix.os }} / python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.12", "3.13"]
+    env:
+      # Every documented command assumes this. CI reproduces it rather than
+      # restructuring the package to avoid it.
+      PYTHONPATH: src
+    steps:
+      - name: Check out the commit under test
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Install uv and python ${{ matrix.python }}
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Record the interpreter and platform
+        run: uv run python -c "import platform, sys; print(sys.version); print(platform.platform())"
+
+      - name: Run the suite
+        # -rsxX prints one line per skip, xfail and xpass with its reason, so a
+        # skip that hides a real gap is visible in the log instead of silent.
+        run: uv run --with pytest python -m pytest -q -rsxX
