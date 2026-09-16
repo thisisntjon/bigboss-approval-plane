@@ -234,6 +234,30 @@ class ServerTests(unittest.TestCase):
         finally:
             self.server.public_host = None
 
+    def test_malformed_adapter_body_is_rejected_not_defaulted(self):
+        """A body that is not a JSON object must 400, never be read as {} and
+        defaulted into a valid-looking card. Regression for the silent-accept
+        in _read_json (a malformed adapter POST used to return 201 Created)."""
+        headers = {"Content-Type": "application/json", "X-Adapter-Token": self.adapter_token}
+        # Malformed JSON.
+        with self.assertRaises(HTTPError) as raised:
+            self.request_raw("POST", "/api/harness/approval-requests", b"{not json", headers)
+        self.assertEqual(raised.exception.code, 400)
+        # Well-formed JSON that is not an object (array / string / number).
+        for body in (b"[1, 2, 3]", b'"just a string"', b"42"):
+            with self.assertRaises(HTTPError) as raised:
+                self.request_raw("POST", "/api/harness/approval-requests", body, headers)
+            self.assertEqual(raised.exception.code, 400, f"body {body!r} should be rejected")
+        # No card should have been created by any of the rejected requests.
+        self.assertEqual(self.server.store.list_approvals(status="pending"), [])
+
+    def test_empty_body_is_still_tolerated(self):
+        """An empty body is a deliberate 'no fields' request, not a parse error,
+        and must not start returning 400 for endpoints whose fields are optional."""
+        headers = {"X-Adapter-Token": self.adapter_token}
+        resp = self.request_raw("POST", "/api/harness/updates", b"", headers)
+        self.assertIn(resp.status, (200, 201))
+
     def request_json(self, method, path, payload=None, headers=None):
         data = None
         request_headers = {"Content-Type": "application/json"}
