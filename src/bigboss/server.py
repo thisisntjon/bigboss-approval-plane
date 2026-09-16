@@ -44,6 +44,12 @@ def squire_status_annotated(store: Store, days: int = 7) -> dict:
     return status
 
 
+class BadRequestError(Exception):
+    """A request body could not be parsed. Caught in the POST dispatcher and
+    answered with 400, so a malformed payload can never be silently read as an
+    empty object and defaulted into a valid-looking record."""
+
+
 class ApprovalHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = False
@@ -207,6 +213,12 @@ class ApprovalHandler(BaseHTTPRequestHandler):
         return self._send_error(HTTPStatus.NOT_FOUND, "Route not found.")
 
     def do_POST(self) -> None:
+        try:
+            self._dispatch_post()
+        except BadRequestError as exc:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(exc))
+
+    def _dispatch_post(self) -> None:
         if not self._validate_host_header():
             return
         parsed = urlparse(self.path)
@@ -533,9 +545,12 @@ class ApprovalHandler(BaseHTTPRequestHandler):
             return {}
         raw = self.rfile.read(length)
         try:
-            return json.loads(raw.decode("utf-8"))
-        except json.JSONDecodeError:
-            return {}
+            parsed = json.loads(raw.decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise BadRequestError("Request body is not valid JSON.") from exc
+        if not isinstance(parsed, dict):
+            raise BadRequestError("Request body must be a JSON object.")
+        return parsed
 
     def _bearer_token(self) -> str | None:
         value = self.headers.get("Authorization") or ""

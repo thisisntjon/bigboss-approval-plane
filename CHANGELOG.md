@@ -10,7 +10,7 @@ The first tagged version. It marks the point where a stranger can run the test s
 
 - A local approval plane: an HTTP server, a SQLite store, Server-Sent Events, and a static web UI. Standard library only, zero runtime dependencies.
 - Policy routing that classifies a proposed action as `auto_allowed`, `pending`, or `blocked`.
-- Decisions bound to the `action_hash` of the proposed action, the workspace, and the policy version. An adapter may execute only the matching action. No MCP tool or API lets an agent approve its own request.
+- Decisions bound to the `action_hash` of the proposed action, the workspace, and the policy version, and to an enrolled device token. An adapter may execute only the matching action, and the MCP facade exposes no approve/reject tool. This attributes and binds a decision; it is **not**, on its own, an isolation boundary against a governed agent that can already reach the loopback API. See "Security model" in the README.
 - Requests, decisions, runs, pair codes, and audit events persisted in SQLite across restarts.
 - Harness integrations: an MCP stdio facade, a hook adapter, and a Codex app-server bridge.
 - Phone approval over the LAN, opt-in with `--lan`, using per-device tokens and a one-time pair code.
