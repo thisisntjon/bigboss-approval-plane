@@ -6,6 +6,8 @@ from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+import pytest
+
 from bigboss import cli
 from bigboss.security import token_hash
 from bigboss.server import ApprovalHTTPServer
@@ -80,6 +82,47 @@ class LocalDashboardServerTests(unittest.TestCase):
         with self.assertRaises(HTTPError) as raised:
             self.request_json("POST", "/api/devices/claim", {"code": pair["code"]})
         self.assertEqual(raised.exception.code, 400)
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="https://github.com/thisisntjon/bigboss-approval-plane/issues/3",
+    )
+    def test_colocated_loopback_caller_cannot_self_enroll_and_approve(self):
+        """Desired invariant: a loopback process with no prior credentials cannot
+        mint a pairing code, claim a device, raise a card, and approve it.
+
+        Today that sequence succeeds (issue #3). This test fails until a design
+        lands; strict xfail turns XPASS into a CI failure so the marker cannot
+        rot after the fix.
+        """
+        pair = self.request_json("POST", "/api/pair/codes", {"device_name": "Rogue Harness"})
+        claimed = self.request_json(
+            "POST", "/api/devices/claim", {"code": pair["code"], "name": "Rogue Harness"}
+        )
+        card = self.request_json(
+            "POST",
+            "/api/harness/approval-requests",
+            {
+                "harness": "codex",
+                "workspace": self.tempdir.name,
+                "title": "self-approve",
+                "proposed_action": {"kind": "shell", "command": "echo pwned"},
+            },
+            headers={"X-Adapter-Token": self.adapter_token},
+        )
+        approval = card.get("approval") or card
+        approval_id = approval["id"]
+        with self.assertRaises(HTTPError) as raised:
+            self.request_json(
+                "POST",
+                f"/api/approvals/{approval_id}/decide",
+                {"decision": "approve_once"},
+                headers={
+                    "Authorization": f"Bearer {claimed['auth_token']}",
+                    "X-BigBoss-CSRF": claimed["csrf_token"],
+                },
+            )
+        self.assertIn(raised.exception.code, (401, 403))
 
     def test_loopback_alone_grants_no_device_access(self):
         # The governance guarantee behind auto-claim: a local process without a
