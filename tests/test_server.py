@@ -10,6 +10,12 @@ from bigboss.security import token_hash
 from bigboss.server import ApprovalHTTPServer
 from bigboss.store import Store
 
+BROWSER_NAV = {
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Accept": "text/html",
+}
+
 
 class ServerTests(unittest.TestCase):
     def setUp(self):
@@ -80,7 +86,12 @@ class ServerTests(unittest.TestCase):
     def test_sessions_endpoint_returns_fleet_log(self):
         self.server.store.record_harness_session(
             {"harness": "codex", "vendor": "openai", "project": "a sibling project", "summary": "did stuff"})
-        pair = self.request_json("POST", "/api/pair/codes", {"device_name": "Fleet Phone"})
+        pair = self.request_json(
+            "POST",
+            "/api/admin/pair-codes",
+            {"device_name": "Fleet Phone"},
+            headers={"X-Admin-Token": self.admin_token},
+        )
         claimed = self.request_json("POST", "/api/devices/claim", {"code": pair["code"]})
         auth_headers = {"Authorization": f"Bearer {claimed['auth_token']}"}
         data = self.request_json("GET", "/api/sessions?days=1", headers=auth_headers)
@@ -129,7 +140,12 @@ class ServerTests(unittest.TestCase):
              "queue": [{"client": "job-fit", "status": "running"}], "depth": 2},
             headers={"X-Adapter-Token": self.adapter_token},
         )
-        pair = self.request_json("POST", "/api/pair/codes", {"device_name": "Sq Phone"})
+        pair = self.request_json(
+            "POST",
+            "/api/admin/pair-codes",
+            {"device_name": "Sq Phone"},
+            headers={"X-Admin-Token": self.admin_token},
+        )
         claimed = self.request_json("POST", "/api/devices/claim", {"code": pair["code"]})
         auth_headers = {"Authorization": f"Bearer {claimed['auth_token']}"}
         status = self.request_json("GET", "/api/squire/status", headers=auth_headers)
@@ -166,17 +182,24 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(raised.exception.code, 401)
 
     def test_pair_page_is_loopback_only(self):
-        with urlopen(f"{self.base_url}/pair", timeout=5) as response:
+        request = Request(f"{self.base_url}/pair", headers=BROWSER_NAV)
+        with urlopen(request, timeout=5) as response:
             body = response.read().decode("utf-8")
         self.assertEqual(response.status, 200)
         self.assertIn("/static/qrcode.js", body)
         self.assertIn("Pair your phone", body)
 
     def test_pair_page_trailing_slash(self):
-        with urlopen(f"{self.base_url}/pair/", timeout=5) as response:
+        request = Request(f"{self.base_url}/pair/", headers=BROWSER_NAV)
+        with urlopen(request, timeout=5) as response:
             body = response.read().decode("utf-8")
         self.assertEqual(response.status, 200)
         self.assertIn("Pair your phone", body)
+
+    def test_pair_page_rejects_api_clients(self):
+        with self.assertRaises(HTTPError) as raised:
+            urlopen(f"{self.base_url}/pair", timeout=5)
+        self.assertEqual(raised.exception.code, 403)
 
     def test_desk_page_shows_pair_button(self):
         with urlopen(f"{self.base_url}/desk", timeout=5) as response:
@@ -192,11 +215,18 @@ class ServerTests(unittest.TestCase):
         self.assertIn("/desk", payload["desk_url"])
 
     def test_loopback_pair_code_endpoint(self):
-        pair = self.request_json("POST", "/api/pair/codes", {"device_name": "QR Phone"})
-        self.assertIn("claim_url", pair)
-        self.assertIn(pair["code"], pair["claim_url"])
-        claimed = self.request_json("POST", "/api/devices/claim", {"code": pair["code"]})
-        self.assertEqual(claimed["device_name"], "QR Phone")
+        with self.assertRaises(HTTPError) as raised:
+            self.request_json("POST", "/api/pair/codes", {"device_name": "QR Phone"})
+        self.assertEqual(raised.exception.code, 403)
+
+        request = Request(f"{self.base_url}/pair", headers=BROWSER_NAV)
+        with urlopen(request, timeout=5) as response:
+            body = response.read().decode("utf-8")
+        marker = 'id="pair-code">'
+        self.assertIn(marker, body)
+        code = body.split(marker, 1)[1].split("<", 1)[0].strip()
+        claimed = self.request_json("POST", "/api/devices/claim", {"code": code})
+        self.assertTrue(claimed["auth_token"])
 
     def test_host_header_validation_rejects_unauthorized_host(self):
         with self.assertRaises(HTTPError) as raised:

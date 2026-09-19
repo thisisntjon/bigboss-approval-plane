@@ -2,6 +2,12 @@
 
 Notable changes to BigBoss, newest first. Dates are UTC.
 
+## Unreleased
+
+### Security
+
+- Pairing codes are no longer returned from `POST /api/pair/codes`. That JSON mint was the issue #3 self-enroll path. Codes are shown on `GET /pair` to a browser navigation (`Sec-Fetch-Dest: document` or `Sec-Fetch-Mode: navigate`) or minted by `POST /api/admin/pair-codes` with the admin token. Residual: spoofed fetch metadata, admin-token file read, or a shared OS user.
+
 ## v0.1.0 - 2026-09-15
 
 The first tagged version. It marks the point where a stranger can run the test suite and watch it pass on two operating systems. It does not change what the software does.
