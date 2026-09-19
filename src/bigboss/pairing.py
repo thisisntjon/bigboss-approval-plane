@@ -130,30 +130,8 @@ def render_pair_page(payload: dict[str, Any]) -> str:
         }}
       }});
 
-      document.getElementById("refresh-button").addEventListener("click", async () => {{
-        const errorEl = document.getElementById("pair-error");
-        errorEl.textContent = "";
-        const button = document.getElementById("refresh-button");
-        button.disabled = true;
-        try {{
-          const response = await fetch("/api/pair/codes", {{
-            method: "POST",
-            headers: {{ "Content-Type": "application/json" }},
-            body: JSON.stringify({{
-              device_name: document.getElementById("device-name").value.trim() || defaultDeviceName,
-            }}),
-          }});
-          const data = await response.json();
-          if (!response.ok) {{
-            throw new Error(data.error || `Request failed: ${{response.status}}`);
-          }}
-          applyPayload(data);
-          startCountdown(data.expires_at);
-        }} catch (error) {{
-          errorEl.textContent = error.message;
-        }} finally {{
-          button.disabled = false;
-        }}
+      document.getElementById("refresh-button").addEventListener("click", () => {{
+        window.location.reload();
       }});
     </script>
   </body>
@@ -242,26 +220,8 @@ def render_desk_page(*, phone_url: str, port: int, autoshow: bool = False) -> st
         tick();
       }}
 
-      async function refreshPairCode() {{
-        const errorEl = document.getElementById("pair-error");
-        errorEl.textContent = "";
-        const response = await fetch("/api/pair/codes", {{
-          method: "POST",
-          headers: {{ "Content-Type": "application/json" }},
-          body: JSON.stringify({{ device_name: defaultDeviceName }}),
-        }});
-        const data = await response.json();
-        if (!response.ok) {{
-          throw new Error(data.error || `Request failed: ${{response.status}}`);
-        }}
-        applyPayload(data);
-      }}
-
       function openModal() {{
-        modal.classList.remove("hidden");
-        refreshPairCode().catch((error) => {{
-          document.getElementById("pair-error").textContent = error.message;
-        }});
+        window.location.assign("/pair");
       }}
 
       function closeModal() {{
@@ -274,9 +234,7 @@ def render_desk_page(*, phone_url: str, port: int, autoshow: bool = False) -> st
         if (event.target === modal) closeModal();
       }});
       document.getElementById("refresh-button").addEventListener("click", () => {{
-        refreshPairCode().catch((error) => {{
-          document.getElementById("pair-error").textContent = error.message;
-        }});
+        window.location.assign("/pair");
       }});
       document.getElementById("copy-link-button").addEventListener("click", async () => {{
         try {{

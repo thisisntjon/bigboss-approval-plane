@@ -47,9 +47,7 @@ Earlier author-run observation, kept as history: 2026-09-02 on Windows 11, 398 p
 
 BigBoss makes an agent's proposed actions **visible, attributable, and auditable**, and holds a gated action until a decision is recorded. Within that scope its guarantees hold: a decision is bound to the `action_hash`, workspace, and policy version, and to an enrolled device token, so an adapter can execute only the exact action a specific device approved, and every request, decision, and enrollment is written to the event log.
 
-What it is **not**: an isolation boundary between the human operator and a governed agent that runs on the same machine. `serve` binds `127.0.0.1`, and enrollment — `POST /api/pair/codes` (loopback-gated) followed by `POST /api/devices/claim` — succeeds for any loopback process with no human step. The loopback gate was meant to keep *LAN* hosts from self-pairing; it does not separate the human from a co-located agent, because both reach the API over loopback. So a governed harness that can make local HTTP calls can enroll its own device and approve its own cards.
-
-The practical consequence: **treat host-level isolation of the harness as a requirement, not an optimisation.** Run the governed agent as a separate OS user that cannot reach the dashboard port, in a sandbox, or on a separate host from the approver. Closing that gap inside BigBoss (so pairing requires a human-visible step an API caller cannot self-serve) is tracked as future work.
+What it is **not**: a complete isolation boundary between the human operator and a governed agent on the same machine. `POST /api/pair/codes` no longer returns a pairing code as JSON; `/pair` is served only to a browser navigation (`Sec-Fetch-Dest: document` or `Sec-Fetch-Mode: navigate`). A loopback process that only speaks JSON cannot self-enroll. Residual: a process that can spoof those fetch metadata headers, read the admin token from disk, or share the operator's OS user can still enroll. Host-level isolation of the harness remains required.
 
 ## Limitations
 
@@ -57,7 +55,7 @@ The practical consequence: **treat host-level isolation of the harness as a requ
 - iOS has no reliable closed-app LAN-only lock-screen web push. Phone alerts need the page or PWA open.
 - LAN only. No tunnel, no relay, no hosted service.
 - Single user. One human authority per instance. Author-run only; no independent reproduction yet.
-- Not an isolation boundary against a co-located agent. On a shared host, any process that can reach the loopback API can enroll a device and approve cards; isolating the governed harness from that API is the operator's job. See [Security model](#security-model).
+- Not a complete isolation boundary against a co-located agent. JSON pair-code minting is closed; remaining enrollment paths are browser navigation to `/pair` and `/api/admin/pair-codes`. See [Security model](#security-model).
 - On Windows, `GET /api/daemons` can take longer than five seconds when none of the probed local services are listening. It probes six endpoints serially with a two second connect timeout each.
 
 **Deeper documentation:** [Harness adapter contract](#harness-adapter-contract) · [Definition of done](#definition-of-done) · [Useful files](#useful-files) · [docs/squire.md](docs/squire.md) · [CONTRIBUTING.md](CONTRIBUTING.md)
@@ -90,7 +88,7 @@ uv run python -m bigboss open
 
 Auto-claim (not blanket loopback trust) is deliberate: it keeps every decision bound to an enrolled device token and attributable to a named device, rather than trusting any loopback caller implicitly.
 
-Its limit is stated plainly in [Security model](#security-model): binding and attribution are not the same as isolation. A governed harness runs on this same machine, so it can already reach the loopback API; enrollment (`/api/pair/codes` → `/api/devices/claim`) is available to any loopback process and needs no human step, so such a process can enroll its own device and decide its own cards. Keeping the harness away from the approval API — a separate OS user, a sandbox, or a separate host — is the operator's responsibility.
+Its limit is stated plainly in [Security model](#security-model): binding and attribution are not the same as isolation. JSON minting of pair codes is closed; a browser navigation to `/pair` or an admin token is required. A colocated harness that can spoof browser fetch metadata or read the admin token file can still enroll. Keep the harness off the approval API at the OS level.
 
 ## Pair your phone (one click)
 

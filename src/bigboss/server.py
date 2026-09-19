@@ -244,13 +244,16 @@ class ApprovalHandler(BaseHTTPRequestHandler):
             token = self.server.store.create_stream_token(device["id"])
             return self._send_json({"stream_token": token})
         if path == "/api/pair/codes":
-            # A minted code is an enrollment credential: loopback only, else
-            # any LAN host could pair itself.
+            # Issue #3: a minted code is an enrollment credential. JSON minting
+            # let any loopback process enroll itself. Codes are shown to a human
+            # on GET /pair (browser navigation) or returned to an admin token.
             if not self._require_loopback():
                 return
-            body = self._read_json()
-            pair = self._issue_pair_payload(body)
-            return self._send_json(pair, status=HTTPStatus.CREATED)
+            return self._send_error(
+                HTTPStatus.FORBIDDEN,
+                "Pairing codes are not returned as JSON. Open /pair in a browser "
+                "or mint via /api/admin/pair-codes.",
+            )
         if path == "/api/admin/pair-codes":
             if not self._require_admin():
                 return
@@ -615,6 +618,14 @@ class ApprovalHandler(BaseHTTPRequestHandler):
         self.wfile.write(encoded)
 
     def _serve_pair_page(self) -> None:
+        if not self._require_loopback():
+            return
+        if not self._is_browser_navigation():
+            self._send_error(
+                HTTPStatus.FORBIDDEN,
+                "Pairing page is served to a browser navigation, not to API clients.",
+            )
+            return
         payload = self._issue_pair_payload({})
         html_page = render_pair_page(payload)
         encoded = html_page.encode("utf-8")
@@ -635,6 +646,11 @@ class ApprovalHandler(BaseHTTPRequestHandler):
             return True
         self._send_error(HTTPStatus.FORBIDDEN, "This endpoint is only available from localhost.")
         return False
+
+    def _is_browser_navigation(self) -> bool:
+        dest = (self.headers.get("Sec-Fetch-Dest") or "").lower()
+        mode = (self.headers.get("Sec-Fetch-Mode") or "").lower()
+        return dest == "document" or mode == "navigate"
 
     def _require_admin(self) -> bool:
         if not self._client_is_loopback():
