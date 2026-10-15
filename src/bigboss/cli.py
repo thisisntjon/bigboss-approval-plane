@@ -93,7 +93,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Show the pairing QR (starts the server automatically if needed). Pin this command.",
     )
     pair_phone.add_argument("--port", type=int, default=8787, help="Server port.")
-    pair_phone.add_argument("--host", default="0.0.0.0", help="Bind host when auto-starting serve.")
+    pair_phone.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Bind host when auto-starting serve. Defaults to loopback; use --lan for 0.0.0.0.",
+    )
+    pair_phone.add_argument(
+        "--lan",
+        action="store_true",
+        help="Bind 0.0.0.0 for LAN/phone access.",
+    )
 
     pair = subparsers.add_parser("pair-code", help="Create a one-time phone pairing code.")
     pair.add_argument("--name", default="Phone", help="Device name for the paired phone.")
@@ -448,7 +457,7 @@ def main(argv: list[str] | None = None) -> int:
         return serve_app(
             store,
             paths,
-            host="0.0.0.0" if args.lan else args.host,
+            host=bind_host(args),
             port=args.port,
             intel_interval_hours=args.intel_interval_hours,
             squire_health_interval=args.squire_health_interval,
@@ -460,7 +469,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "pair":
         return pair_phone_ui(
             paths,
-            host=args.host,
+            host=bind_host(args),
             port=args.port,
         )
     if args.command == "pair-code":
@@ -1396,6 +1405,11 @@ def host_is_loopback(host: str) -> bool:
     return host in {"127.0.0.1", "::1", "localhost"}
 
 
+def bind_host(args) -> str:
+    """Bind address for serve and pair. 0.0.0.0 only when --lan is set."""
+    return "0.0.0.0" if getattr(args, "lan", False) else args.host
+
+
 def open_dashboard(paths: dict[str, Path], port: int) -> int:
     """Open the local dashboard, minting a single-use auto-claim code.
 
@@ -1480,7 +1494,8 @@ def pair_phone_ui(paths: dict[str, Path], host: str, port: int) -> int:
     url = desk_url(port)
     open_browser(url)
     print(f"Pairing desk: {url}")
-    print(f"Phone URL:    http://{local_ip_hint()}:{port}/")
+    if not host_is_loopback(host):
+        print(f"Phone URL:    http://{local_ip_hint()}:{port}/")
     return 0
 
 

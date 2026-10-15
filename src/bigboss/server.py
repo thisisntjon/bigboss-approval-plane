@@ -50,6 +50,11 @@ class BadRequestError(Exception):
     empty object and defaulted into a valid-looking record."""
 
 
+# Approval and device JSON is small. Reject before buffering so a huge
+# Content-Length cannot pin memory. Ingest routes use their own cap.
+JSON_BODY_MAX_BYTES = 1024 * 1024
+
+
 class ApprovalHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = False
@@ -543,7 +548,17 @@ class ApprovalHandler(BaseHTTPRequestHandler):
         self._send_json({"error": message}, status=status)
 
     def _read_json(self) -> dict:
-        length = int(self.headers.get("Content-Length") or 0)
+        raw_length = self.headers.get("Content-Length")
+        try:
+            length = int(raw_length or 0)
+        except ValueError as exc:
+            raise BadRequestError("Content-Length is not an integer.") from exc
+        if length < 0:
+            raise BadRequestError("Content-Length is invalid.")
+        if length > JSON_BODY_MAX_BYTES:
+            raise BadRequestError(
+                f"Request body exceeds {JSON_BODY_MAX_BYTES} bytes."
+            )
         if length == 0:
             return {}
         raw = self.rfile.read(length)

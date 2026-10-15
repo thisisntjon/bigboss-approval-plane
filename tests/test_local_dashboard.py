@@ -156,6 +156,16 @@ class ServeParserTests(unittest.TestCase):
         self.assertEqual(args.command, "open")
         self.assertEqual(args.port, 8787)
 
+    def test_pair_defaults_to_loopback_unless_lan(self):
+        parser = cli.build_parser()
+        self.assertEqual(cli.bind_host(parser.parse_args(["pair"])), "127.0.0.1")
+        self.assertEqual(cli.bind_host(parser.parse_args(["pair", "--lan"])), "0.0.0.0")
+        self.assertEqual(
+            cli.bind_host(parser.parse_args(["pair", "--host", "192.168.1.9"])),
+            "192.168.1.9",
+        )
+        self.assertEqual(cli.bind_host(parser.parse_args(["serve", "--lan"])), "0.0.0.0")
+
     def test_helpers(self):
         self.assertTrue(cli.host_is_loopback("127.0.0.1"))
         self.assertFalse(cli.host_is_loopback("0.0.0.0"))
