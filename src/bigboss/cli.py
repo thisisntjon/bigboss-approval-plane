@@ -1674,7 +1674,7 @@ def serve_app(
         print(f"LAN PIN:     {lan_pin}  (enter on phone to re-pair)")
         print(f"Phone URL:   http://{local_ip_hint()}:{port}/  (raw IP)")
         print(f"Phone URL:   {phone_url}  (mDNS hostname)")
-        print(f"Quick pair:  uv run python -m bigboss pair")
+        print(f"Quick pair:  uv run python -m bigboss pair --lan")
     if scheduler is not None:
         print(
             f"Intel scheduler: digest every {intel_interval_hours}h, "

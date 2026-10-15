@@ -130,6 +130,30 @@ class RouterProxyTests(unittest.TestCase):
         time.sleep(0.2)  # give any (erroneous) recording a chance to appear
         self.assertEqual(self._router_calls(), [])  # passthrough is never metered
 
+    def test_router_body_cap_and_content_length_validation(self):
+        import http.client
+        import bigboss.router.proxy as proxy_mod
+
+        original = proxy_mod.ROUTER_BODY_MAX_BYTES
+        proxy_mod.ROUTER_BODY_MAX_BYTES = 16
+        try:
+            with self.assertRaises(urllib.error.HTTPError) as raised:
+                self._post("/v1/messages", {"model": "claude-opus-4-8", "messages": ["oversized"]})
+            self.assertEqual(raised.exception.code, 413)
+        finally:
+            proxy_mod.ROUTER_BODY_MAX_BYTES = original
+
+        for raw_len in ("bad", "-1"):
+            conn = http.client.HTTPConnection(self.router_host, self.router_port, timeout=5)
+            try:
+                conn.putrequest("POST", "/v1/messages")
+                conn.putheader("Content-Length", raw_len)
+                conn.endheaders()
+                resp = conn.getresponse()
+                self.assertEqual(resp.status, 400)
+            finally:
+                conn.close()
+
     def _router_calls(self):
         with self.store.connect() as conn:
             return [dict(r) for r in conn.execute("SELECT * FROM router_calls ORDER BY created_at")]

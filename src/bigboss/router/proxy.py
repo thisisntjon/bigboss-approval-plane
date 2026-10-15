@@ -27,6 +27,9 @@ class RouterHTTPServer(ThreadingHTTPServer):
             self.store.set_hard_cap(str(hard_cap))
 
 
+ROUTER_BODY_MAX_BYTES = 1024 * 1024
+
+
 class RouterHandler(BaseHTTPRequestHandler):
     server: RouterHTTPServer
 
@@ -48,6 +51,8 @@ class RouterHandler(BaseHTTPRequestHandler):
 
     def _handle_messages(self, parsed) -> None:
         raw = self._read_body()
+        if raw is None:
+            return
         try:
             body = json.loads(raw) if raw else {}
         except (json.JSONDecodeError, ValueError):
@@ -80,12 +85,39 @@ class RouterHandler(BaseHTTPRequestHandler):
             print(f"router: metering error (relay already delivered): {exc!r}")
 
     def _passthrough(self, parsed, method: str) -> None:
-        raw = self._read_body() if method == "POST" else b""
+        if method == "POST":
+            raw = self._read_body()
+            if raw is None:
+                return
+        else:
+            raw = b""
         upstream.relay(self, method, parsed.path, parsed.query, self.headers, raw, meter=None)
 
-    def _read_body(self) -> bytes:
-        length = int(self.headers.get("Content-Length") or 0)
+    def _read_body(self) -> bytes | None:
+        raw_length = self.headers.get("Content-Length")
+        try:
+            length = int(raw_length or 0)
+        except ValueError:
+            self._send_error(HTTPStatus.BAD_REQUEST, "Content-Length is not an integer.")
+            return None
+        if length < 0:
+            self._send_error(HTTPStatus.BAD_REQUEST, "Content-Length is invalid.")
+            return None
+        if length > ROUTER_BODY_MAX_BYTES:
+            self._send_error(
+                HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
+                f"Request body exceeds {ROUTER_BODY_MAX_BYTES} bytes.",
+            )
+            return None
         return self.rfile.read(length) if length else b""
+
+    def _send_error(self, status: HTTPStatus, message: str) -> None:
+        payload = json.dumps({"error": message}).encode("utf-8")
+        self.send_response(status)
+        self.send_header("content-type", "application/json")
+        self.send_header("content-length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
 
     def _client_is_loopback(self) -> bool:
         try:
@@ -94,9 +126,5 @@ class RouterHandler(BaseHTTPRequestHandler):
             return False
 
     def _forbid(self) -> None:
-        payload = json.dumps({"error": "BigBoss router is loopback-only."}).encode("utf-8")
-        self.send_response(HTTPStatus.FORBIDDEN)
-        self.send_header("content-type", "application/json")
-        self.send_header("content-length", str(len(payload)))
-        self.end_headers()
-        self.wfile.write(payload)
+        self._send_error(HTTPStatus.FORBIDDEN, "BigBoss router is loopback-only.")
+
