@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+import bigboss.server as server_mod
 from bigboss.security import token_hash
 from bigboss.server import ApprovalHTTPServer
 from bigboss.store import Store
@@ -281,6 +282,25 @@ class ServerTests(unittest.TestCase):
         # No card should have been created by any of the rejected requests.
         self.assertEqual(self.server.store.list_approvals(status="pending"), [])
 
+    def test_json_body_over_cap_is_rejected(self):
+        """_read_json must refuse a huge Content-Length before a card is stored."""
+        original = server_mod.JSON_BODY_MAX_BYTES
+        server_mod.JSON_BODY_MAX_BYTES = 8
+        try:
+            headers = {"Content-Type": "application/json", "X-Adapter-Token": self.adapter_token}
+            with self.assertRaises(HTTPError) as raised:
+                self.request_raw(
+                    "POST",
+                    "/api/harness/approval-requests",
+                    b'{"title":"too big for the cap"}',
+                    headers,
+                )
+            self.assertEqual(raised.exception.code, 413)
+            self.assertIn("exceeds", raised.exception.read().decode("utf-8"))
+            self.assertEqual(self.server.store.list_approvals(status="pending"), [])
+        finally:
+            server_mod.JSON_BODY_MAX_BYTES = original
+
     def test_empty_body_is_still_tolerated(self):
         """An empty body is a deliberate 'no fields' request, not a parse error,
         and must not start returning 400 for endpoints whose fields are optional."""
@@ -402,6 +422,22 @@ class RegistryIngestRouteTests(unittest.TestCase):
             self.assertEqual(raised.exception.code, 413)
         finally:
             ApprovalHandler.INGEST_MAX_BYTES = original
+
+    def test_invalid_content_length_on_ingest_routes_is_400(self):
+        import http.client
+        host, port = self.server.server_address
+        for path in ("/api/registry/ingest", "/api/harness/session"):
+            for raw_len in ("not-an-int", "-5"):
+                conn = http.client.HTTPConnection(host, port, timeout=5)
+                try:
+                    conn.putrequest("POST", path)
+                    conn.putheader("X-Adapter-Token", self.adapter_token)
+                    conn.putheader("Content-Length", raw_len)
+                    conn.endheaders()
+                    resp = conn.getresponse()
+                    self.assertEqual(resp.status, 400, f"{path} with Content-Length={raw_len}")
+                finally:
+                    conn.close()
 
     def test_prune_query_full_syncs_the_host(self):
         hdr = {"Content-Type": "application/json", "X-Adapter-Token": self.adapter_token}

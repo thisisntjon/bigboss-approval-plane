@@ -50,6 +50,15 @@ class BadRequestError(Exception):
     empty object and defaulted into a valid-looking record."""
 
 
+class PayloadTooLargeError(Exception):
+    """A request body exceeds the configured byte cap. Answered with 413."""
+
+
+# Approval and device JSON is small. Reject before buffering so a huge
+# Content-Length cannot pin memory. Ingest routes use their own cap.
+JSON_BODY_MAX_BYTES = 1024 * 1024
+
+
 class ApprovalHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = False
@@ -215,6 +224,8 @@ class ApprovalHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         try:
             self._dispatch_post()
+        except PayloadTooLargeError as exc:
+            self._send_error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, str(exc))
         except BadRequestError as exc:
             self._send_error(HTTPStatus.BAD_REQUEST, str(exc))
 
@@ -378,7 +389,13 @@ class ApprovalHandler(BaseHTTPRequestHandler):
 
         if not self._require_adapter_lan():
             return
-        length = int(self.headers.get("Content-Length") or 0)
+        raw_length = self.headers.get("Content-Length")
+        try:
+            length = int(raw_length or 0)
+        except ValueError:
+            return self._send_error(HTTPStatus.BAD_REQUEST, "Content-Length is not an integer.")
+        if length < 0:
+            return self._send_error(HTTPStatus.BAD_REQUEST, "Content-Length is invalid.")
         if length > self.INGEST_MAX_BYTES:
             return self._send_error(
                 HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
@@ -401,7 +418,15 @@ class ApprovalHandler(BaseHTTPRequestHandler):
         Returns the parsed dict, or None after having already sent an error response."""
         if not self._require_adapter_lan():
             return None
-        length = int(self.headers.get("Content-Length") or 0)
+        raw_length = self.headers.get("Content-Length")
+        try:
+            length = int(raw_length or 0)
+        except ValueError:
+            self._send_error(HTTPStatus.BAD_REQUEST, "Content-Length is not an integer.")
+            return None
+        if length < 0:
+            self._send_error(HTTPStatus.BAD_REQUEST, "Content-Length is invalid.")
+            return None
         if length > self.INGEST_MAX_BYTES:
             self._send_error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
                              f"Body exceeds {self.INGEST_MAX_BYTES} bytes.")
@@ -543,7 +568,17 @@ class ApprovalHandler(BaseHTTPRequestHandler):
         self._send_json({"error": message}, status=status)
 
     def _read_json(self) -> dict:
-        length = int(self.headers.get("Content-Length") or 0)
+        raw_length = self.headers.get("Content-Length")
+        try:
+            length = int(raw_length or 0)
+        except ValueError as exc:
+            raise BadRequestError("Content-Length is not an integer.") from exc
+        if length < 0:
+            raise BadRequestError("Content-Length is invalid.")
+        if length > JSON_BODY_MAX_BYTES:
+            raise PayloadTooLargeError(
+                f"Request body exceeds {JSON_BODY_MAX_BYTES} bytes."
+            )
         if length == 0:
             return {}
         raw = self.rfile.read(length)
