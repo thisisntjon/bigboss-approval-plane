@@ -36,12 +36,13 @@ jobs:
       PYTHONPATH: src
     steps:
       - name: Check out the commit under test
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install uv and python ${{ matrix.python }}
-        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
         with:
           python-version: ${{ matrix.python }}
+          enable-cache: false
 
       - name: Record the interpreter and platform
         run: uv run python -c "import platform, sys; print(sys.version); print(platform.platform())"

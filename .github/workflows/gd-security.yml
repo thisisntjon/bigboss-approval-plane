@@ -1,0 +1,43 @@
+# Golden Dome M3 security job. Canonical copy:
+# SIGoldenDome/modules/m3_supply_chain/gd-security.yml -> .github/workflows/gd-security.yml
+# Fails on leaked secrets (Betterleaks, full history) and known-malicious packages (OSV MAL-).
+# Every action is pinned to a full commit SHA; scanner binaries are pinned by SHA-256.
+name: gd-security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch pinned scanners
+        env:
+          BETTERLEAKS_SHA256: f8b185a39ffcece2a1ca82bf3a4e7435cd81963ffd16b7a9128daf75f35f6de7
+          OSV_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/gd" && cd "$RUNNER_TEMP/gd"
+          curl -fsSLo betterleaks.tar.gz https://github.com/betterleaks/betterleaks/releases/download/v1.9.0/betterleaks_1.9.0_linux_x64.tar.gz
+          echo "$BETTERLEAKS_SHA256  betterleaks.tar.gz" | sha256sum -c -
+          tar -xzf betterleaks.tar.gz betterleaks
+          curl -fsSLo osv-scanner https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_linux_amd64
+          echo "$OSV_SHA256  osv-scanner" | sha256sum -c -
+          chmod +x betterleaks osv-scanner
+
+      - name: Scan for secrets and malicious packages
+        run: python3 .github/gd_security_scan.py --betterleaks "$RUNNER_TEMP/gd/betterleaks" --osv-scanner "$RUNNER_TEMP/gd/osv-scanner" --root .
