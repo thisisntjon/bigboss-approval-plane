@@ -94,7 +94,7 @@ Its limit is stated plainly in [Security model](#security-model): binding and at
 
 Phone access is opt-in: `serve --lan` binds `0.0.0.0` and opens the Pairing Desk instead of the dashboard.
 
-**Pin `scripts\pair-phone.bat` to your taskbar** (or run `uv run python -m bigboss pair`).
+**Pin `scripts\pair-phone.bat` to your taskbar** (it runs `bigboss pair --lan`). A plain `bigboss pair` stays on `127.0.0.1`.
 
 That command:
 1. Starts BigBoss automatically if it is not already running (reclaims stale listeners on port 8787 — no manual `netstat`)
@@ -104,7 +104,7 @@ That command:
 First-time bootstrap is scan-only. After that, re-pair with the **LAN PIN** printed when the server starts (phone → PIN tab).
 
 ```powershell
-uv run python -m bigboss pair            # or: serve --lan (also opens the desk)
+uv run python -m bigboss pair --lan      # phone on the LAN; plain `pair` stays on 127.0.0.1
 ```
 
 Manage devices:

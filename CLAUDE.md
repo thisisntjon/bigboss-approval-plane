@@ -42,7 +42,7 @@ uv run python -m bigboss open            # re-open/re-pair the local dashboard (
 
 # LAN/phone mode (opt-in): binds 0.0.0.0, opens the QR pairing desk
 uv run python -m bigboss serve --lan
-uv run python -m bigboss pair            # phone pairing (starts server if needed, opens QR desk)
+uv run python -m bigboss pair --lan      # phone pairing (starts server if needed, opens QR desk)
 
 # Cost router (loopback-only metering proxy)
 uv run python -m bigboss router --port 4000 --harness agent-sdk
